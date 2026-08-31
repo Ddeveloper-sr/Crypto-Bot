@@ -82,6 +82,7 @@ Crypto-Bot/
 ├── package.json
 ├── .env.example
 ├── .gitignore
+├── Dockerfile
 ├── LICENSE
 └── README.md
 ```
@@ -118,18 +119,20 @@ LOG_LEVEL=info
 
 ## Hosting
 
-The bot is intended to run as a **long-lived Node.js process**, not as a serverless function that sleeps between requests.
+The bot is a **long-lived Node.js process**. Choose a host that can keep a worker/service running continuously and, if using SQLite, provide persistent storage.
 
-### Recommended choices
+### Hosting choices
 
-| Hosting | Best for | Notes |
+| Hosting | Best for | Recommendation |
 | --- | --- | --- |
-| **Render** | Simple GitHub deployment | Supports Node.js services and background workers. Persistent storage should be configured if SQLite data must survive redeploys. |
-| **Railway** | Simple deployment + scaling | GitHub-based deployment, environment variables, logs, and persistent storage options. Current free usage is limited, so check the current plan before relying on it for 24/7 hosting. |
-| **VPS** | Maximum control | Best when you want full control over Node.js, SQLite, PM2/systemd, Docker, and backups. Requires server administration. |
-| **Docker host** | Portable deployments | Recommended when you want the same container locally and in production. |
+| **VPS** | Full control and predictable 24/7 operation | ⭐ Best for a serious self-hosted deployment |
+| **Railway** | Fast GitHub deployment and managed infrastructure | ⭐ Best for the easiest deployment |
+| **Render** | GitHub-connected Node.js services/background workers | Good option; choose a suitable paid worker/service plan for continuous operation |
+| **Docker host** | Portable production deployments | Good if you already use Docker |
 
-**Default recommendation:** start with **Render** for the easiest GitHub-based deployment, then move to a VPS or another persistent host if you need more control or predictable long-term uptime.
+**Recommended path:** develop locally → deploy from GitHub to **Railway** or a **VPS** → add persistent storage → configure secrets → run the bot continuously.
+
+Railway currently offers a $0 Free plan with limited included usage, while its Hobby plan has a $5 monthly minimum. Render provides Node.js services and background workers, with compute plans that include a free web-service tier but paid background-worker plans. Check each provider's current pricing before choosing a 24/7 setup. citeturn0search1turn0search0turn0search2
 
 ### Render
 
