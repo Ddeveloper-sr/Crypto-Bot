@@ -5,7 +5,7 @@
 **A modular Discord crypto information bot built with Node.js, discord.js, Components V2, and SQLite.**
 
 [![Discord.js](https://img.shields.io/badge/discord.js-14.27.0-5865F2?logo=discord&logoColor=white)](https://discord.js.org/)
-[![Node.js](https://img.shields.io/badge/Node.js-18%2B-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-24.17%2B-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 </div>
@@ -13,21 +13,24 @@
 ## Features
 
 - 🪙 Cryptocurrency prices and market information
-- 📈 Market statistics and chart-ready data
+- 📈 7-day compact price charts
+- 📊 Market listings with pagination
 - 🔎 Coin search and discovery
 - 🔥 Trending cryptocurrencies
 - 🌍 Global market statistics
 - ⚖️ Cryptocurrency comparison
 - 💱 Currency conversion
 - 💼 Simulated portfolio tracking
-- 🔔 Price-alert system
+- 🧾 Portfolio history
+- 🔔 Price-alert system with DM notifications
 - 🎛️ Discord Components V2 interfaces
-- 🧩 Application-owned emoji support
+- 🧩 Application-owned emoji synchronization
 - 📝 Centralized logging with `logger.js`
-- 🗃️ SQLite persistence
-- 🧱 Modular command, event, component, service, and database architecture
+- 🗃️ SQLite persistence with WAL mode
+- ⚡ Short-lived market-data caching
+- 🧪 Automated tests and GitHub Actions CI
 
-> **Notice:** This project is designed for market information and simulated/paper portfolio features. It does not provide real-money trading, custody, deposits, withdrawals, or exchange-account automation.
+> **Notice:** This project provides market information and simulated/paper portfolio features. It does not provide real-money trading, custody, deposits, withdrawals, private-key storage, or exchange-account automation.
 
 ## Commands
 
@@ -35,16 +38,24 @@
 | --- | --- |
 | `/price` | View a cryptocurrency price |
 | `/coin` | View detailed coin information |
-| `/market` | View market data |
+| `/chart` | View a compact 7-day price chart |
+| `/market` | View paginated market data |
 | `/markets` | Browse market listings |
 | `/trending` | View trending assets |
 | `/search` | Search for cryptocurrencies |
 | `/global` | View global market statistics |
 | `/compare` | Compare cryptocurrencies |
 | `/convert` | Convert an amount between supported currencies |
-| `/portfolio` | Manage a simulated portfolio |
-| `/alert` | Manage price alerts |
-| `/help` | Open the Components V2 help interface |
+| `/portfolio view` | View simulated holdings |
+| `/portfolio add` | Add a simulated holding |
+| `/portfolio remove` | Remove a simulated holding |
+| `/portfolio history` | View simulated portfolio history |
+| `/portfolio reset` | Reset the simulated portfolio |
+| `/alert create` | Create a price alert |
+| `/alert list` | List active alerts |
+| `/alert delete` | Delete an alert |
+| `/alert clear` | Clear all active alerts |
+| `/help` | Open the interactive Components V2 help interface |
 | `/about` | View bot information |
 | `/ping` | Check bot latency |
 
@@ -53,28 +64,27 @@
 ```text
 Crypto-Bot/
 ├── src/
-│   ├── commands/
-│   │   ├── crypto/
-│   │   ├── market/
-│   │   ├── portfolio/
-│   │   ├── alerts/
-│   │   ├── utility/
-│   │   └── admin/
-│   ├── components/
-│   │   ├── buttons/
-│   │   ├── selects/
-│   │   └── modals/
-│   ├── events/
-│   ├── handlers/
-│   ├── services/
 │   ├── database/
-│   ├── config/
+│   │   └── database.js
+│   ├── services/
+│   │   ├── alert-worker.js
+│   │   ├── cache.js
+│   │   └── coingecko.js
+│   ├── ui/
+│   │   └── panels.js
 │   └── utils/
+│       └── format.js
 ├── assets/
 │   ├── emojis/
 │   └── images/
 ├── scripts/
+│   ├── deploy-commands.js
 │   └── sync-emojis.js
+├── test/
+│   └── core.test.js
+├── .github/
+│   └── workflows/
+│       └── ci.yml
 ├── data/
 ├── logs/
 ├── index.js
@@ -89,17 +99,27 @@ Crypto-Bot/
 
 ## Requirements
 
-- Node.js 18 or newer
+- Node.js **24.17.0 or newer**
 - A Discord application and bot token
-- A crypto market-data API key when required by the selected API plan
-- A persistent filesystem if SQLite data should survive restarts
+- `CLIENT_ID` from the Discord Developer Portal
+- A CoinGecko API key when required by the selected API plan
+- Persistent storage if SQLite data should survive host recreation
+
+Current discord.js documentation requires Node.js 24.17.0 or newer for the current release line.
 
 ## Installation
 
 ```bash
 npm install
 cp .env.example .env
+npm run deploy:commands
 npm start
+```
+
+For local development:
+
+```bash
+npm run dev
 ```
 
 Never commit `.env`, bot tokens, API keys, or generated database files.
@@ -113,51 +133,28 @@ GUILD_ID=
 CRYPTO_API_KEY=
 DATABASE_PATH=./data/crypto.db
 LOG_LEVEL=info
+API_CACHE_TTL_MS=30000
+API_TIMEOUT_MS=10000
 ```
 
-`GUILD_ID` is optional and can be used for development command registration.
+`GUILD_ID` is optional. When present, commands are registered to that development guild for faster updates. Without it, commands are registered globally.
 
 ## Hosting
 
-The bot is a **long-lived Node.js process**. Choose a host that can keep a worker/service running continuously and, if using SQLite, provide persistent storage.
+Crypto-Bot is a **long-lived Node.js process**. Choose a host that can keep a worker/service running continuously and, if using SQLite, provide persistent storage.
 
 ### Hosting choices
 
 | Hosting | Best for | Recommendation |
 | --- | --- | --- |
-| **VPS** | Full control and predictable 24/7 operation | ⭐ Best for a serious self-hosted deployment |
-| **Railway** | Fast GitHub deployment and managed infrastructure | ⭐ Best for the easiest deployment |
-| **Render** | GitHub-connected Node.js services/background workers | Good option; choose a suitable paid worker/service plan for continuous operation |
+| **VPS** | Full control, PM2/systemd, Docker, backups | ⭐ Best for serious self-hosting |
+| **Railway** | Fast GitHub deployment | ⭐ Easiest managed deployment |
+| **Render** | GitHub-connected Node.js services/workers | Good managed option |
 | **Docker host** | Portable production deployments | Good if you already use Docker |
 
-**Recommended path:** develop locally → deploy from GitHub to **Railway** or a **VPS** → add persistent storage → configure secrets → run the bot continuously.
-
-Railway currently offers a $0 Free plan with limited included usage, while its Hobby plan has a $5 monthly minimum. Render provides Node.js services and background workers, with compute plans that include a free web-service tier but paid background-worker plans. Check each provider's current pricing before choosing a 24/7 setup. citeturn0search1turn0search0turn0search2
-
-### Render
-
-Use a Node.js service/background worker and configure:
-
-```text
-Build Command: npm ci
-Start Command: npm start
-```
-
-Set the environment variables from `.env.example` in the host's secret/environment-variable settings. If SQLite is used in production, attach persistent storage and point `DATABASE_PATH` at that persistent location.
-
-### Railway
-
-Connect the GitHub repository, set the environment variables, and use:
-
-```text
-npm start
-```
-
-If SQLite is used, configure persistent storage/volume support so the database is not lost when the service is recreated.
+**Recommended path:** develop locally → deploy from GitHub to Railway or a VPS → configure secrets → attach persistent storage → run the bot continuously.
 
 ### VPS
-
-A VPS gives the most control. A typical production setup is:
 
 ```text
 GitHub → VPS → Node.js → Crypto Bot
@@ -166,19 +163,38 @@ GitHub → VPS → Node.js → Crypto Bot
                     └── PM2/systemd
 ```
 
-Use a process manager and backups rather than relying on an SSH session staying open.
+Use a process manager such as PM2 or systemd. Do not rely on an SSH session staying open.
+
+### Railway / Render
+
+Use the host's Node.js service/worker configuration:
+
+```text
+Install: npm install
+Start:   npm start
+```
+
+Configure every variable from `.env.example` as a secret/environment variable. If SQLite is used in production, configure persistent storage and set `DATABASE_PATH` to that persistent location.
+
+Always check the provider's current pricing, sleep behavior, storage rules, and worker limits before selecting a 24/7 deployment.
 
 ## Application Emojis
 
-The bot is designed to use **application-owned emojis**. Keep the source assets in:
+The bot supports **application-owned emojis**. Put PNG, JPEG, or GIF source files in:
 
 ```text
 assets/emojis/
 ```
 
-Then use `scripts/sync-emojis.js` to synchronize the assets with the Discord application.
+Then run:
 
-Suggested assets:
+```bash
+npm run sync:emojis
+```
+
+The synchronization script creates or updates application emojis using the filenames as emoji names.
+
+Suggested pack:
 
 ```text
 crypto.png
@@ -198,13 +214,13 @@ help.png
 
 ## Components V2
 
-The UI uses Discord Components V2 for interactive panels, including buttons, select menus, modals, containers, sections, and text displays.
+The bot uses Discord Components V2 for its interactive UI. The implementation uses containers, text displays, separators, buttons, and select menus instead of relying on a traditional embed-only interface.
 
-The project keeps component construction separate from command logic so the same UI patterns can be reused across crypto pages, portfolio screens, alerts, and help menus.
+The `/help` interface includes category navigation, while market and coin panels expose refresh/pagination controls.
 
 ## Logging
 
-`logger.js` provides a single logging interface for the application:
+`logger.js` provides one logging interface across the application:
 
 ```js
 logger.info('Bot started');
@@ -214,26 +230,23 @@ logger.error(error);
 logger.debug('Debug information');
 ```
 
-Logs can be written to the console and persistent log files depending on the runtime configuration.
+Keep secrets out of logs. Production log files should be rotated or handled by the hosting platform.
 
 ## Data Sources
 
-The crypto service layer is intentionally separated from commands. This makes it possible to change the market-data provider without rewriting the Discord command layer.
+The service layer is separated from Discord command logic so the market-data provider can be changed without rewriting the bot UI.
 
-Market data should always be treated as informational and may be delayed, unavailable, or subject to API limits.
+Market data may be delayed, unavailable, rate-limited, or changed by the provider. The bot treats it as informational data.
 
-## Development
+## Testing
 
-```bash
-npm run dev
-npm run deploy:commands
-```
-
-Before pushing changes:
+Run the test suite with:
 
 ```bash
 npm test
 ```
+
+GitHub Actions also runs the test suite on pushes and pull requests targeting `main`.
 
 ## Security
 
@@ -241,8 +254,9 @@ npm test
 - Never commit `.env`.
 - Never store exchange passwords or private keys in this project.
 - Validate user input before making API requests.
-- Apply API and Discord rate limits.
-- Keep database backups separate from source control.
+- Respect Discord and market-data API rate limits.
+- Keep SQLite backups separate from source control.
+- Use a host secret manager/environment variables for production credentials.
 
 ## License
 
@@ -250,7 +264,7 @@ This project is released under the **MIT License**. See [LICENSE](LICENSE) for t
 
 ## Disclaimer
 
-Crypto-Bot provides software and market-information functionality only. Nothing produced by the bot is financial advice, an offer, or a recommendation to buy or sell an asset. Market data can be inaccurate or delayed. Use the project for development, education, and simulated portfolio functionality.
+Crypto-Bot is software for market-information and simulated portfolio functionality. Nothing produced by the bot is financial advice, an offer, or a recommendation to buy or sell an asset. Market data can be inaccurate or delayed.
 
 <div align="center">
 
