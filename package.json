@@ -1,7 +1,7 @@
 {
   "name": "crypto-bot",
-  "version": "0.1.0",
-  "description": "A modular Discord cryptocurrency information bot with Components V2.",
+  "version": "0.2.0",
+  "description": "A modular Discord cryptocurrency information bot with Components V2, market data, simulated portfolios, and alerts.",
   "main": "index.js",
   "type": "commonjs",
   "scripts": {
@@ -12,7 +12,7 @@
     "test": "node --test"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=24.17.0"
   },
   "dependencies": {
     "better-sqlite3": "^13.0.3",
