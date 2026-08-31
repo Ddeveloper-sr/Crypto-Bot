@@ -2,12 +2,12 @@ require('dotenv').config();
 
 const {
   Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder,
-  ContainerBuilder, TextDisplayBuilder, ButtonBuilder, ButtonStyle,
-  ActionRowBuilder, MessageFlags
+  ButtonBuilder, ButtonStyle
 } = require('discord.js');
 const logger = require('./logger');
 const api = require('./src/services/coingecko');
 const db = require('./src/database/database');
+const { startAlertWorker } = require('./src/services/alert-worker');
 const { v2Reply, helpPanel, coinPanel, textPanel, formatUsd, formatPercent } = require('./src/ui/panels');
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
@@ -43,7 +43,7 @@ const commands = [
       .addStringOption(o => o.setName('coin').setDescription('CoinGecko ID').setRequired(true))
       .addNumberOption(o => o.setName('amount').setDescription('Amount of coins').setMinValue(0.00000001).setRequired(true)))
     .addSubcommand(s => s.setName('reset').setDescription('Reset your simulated portfolio.')),
-  new SlashCommandBuilder().setName('alert').setDescription('Manage simulated price alerts.')
+  new SlashCommandBuilder().setName('alert').setDescription('Manage price alerts.')
     .addSubcommand(s => s.setName('create').setDescription('Create an alert.')
       .addStringOption(o => o.setName('coin').setDescription('CoinGecko ID').setRequired(true))
       .addStringOption(o => o.setName('direction').setDescription('Trigger direction').setRequired(true).addChoices({ name: 'Above', value: 'above' }, { name: 'Below', value: 'below' }))
@@ -54,8 +54,7 @@ const commands = [
 ].map(c => c.toJSON());
 
 function v2(title, body, buttons = []) {
-  const panel = textPanel(title, body, buttons);
-  return v2Reply([panel]);
+  return v2Reply([textPanel(title, body, buttons)]);
 }
 
 async function registerCommands() {
@@ -178,7 +177,11 @@ async function handleCommand(i) {
 
 client.once('ready', async ready => {
   logger.success(`Logged in as ${ready.user.tag}`);
-  try { await registerCommands(); } catch (error) { logger.error(error); }
+  try {
+    await registerCommands();
+    startAlertWorker(client);
+    logger.success('Price alert worker started.');
+  } catch (error) { logger.error(error); }
 });
 
 client.on('interactionCreate', async interaction => {
